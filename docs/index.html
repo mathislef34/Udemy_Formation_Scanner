@@ -1,218 +1,99 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="h-full">
 <head>
   <meta charset="utf-8" />
-  <title>Udemy Scanner – Résultats</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Udemy Scanner – Résultats</title>
 
-  <!-- Grid.js (tableau: tri, recherche, pagination) -->
+  <!-- Tailwind (CDN, pratique pour le layout moderne) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Grid.js (tableau tri/recherche/pagination) -->
   <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
   <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
 
   <!-- Papa Parse (CSV -> JSON) -->
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
-    .wrap { max-width: 1300px; margin: 0 auto; }
-    h1 { margin: 0 0 8px; }
-    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0 18px; }
-    .badge { background: #eef2ff; color: #3730a3; padding: 2px 8px; border-radius: 9999px; font-size: 12px; }
-    .pill { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; }
-    .muted { color: #6b7280; font-size: 14px; }
-    .hidden { display: none; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .chip { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 9999px; padding: 2px 8px; font-size: 12px; }
-    footer { margin-top: 24px; color: #6b7280; font-size: 12px; }
-    .loading { font-size: 14px; color: #374151; }
-    .error { color: #b91c1c; }
-    @media (max-width: 640px) { .controls { flex-direction: column; align-items: flex-start; } }
-  </style>
+  <!-- Styles perso -->
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>Udemy Scanner <span class="badge">dashboard</span></h1>
-    <div class="muted">Affichage en direct de <code>findings.csv</code> (GitHub).</div>
+<body class="h-full bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors">
+  <!-- Header -->
+  <header class="header-gradient text-white">
+    <div class="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Udemy Scanner</h1>
+        <p class="text-white/80 text-sm">Affichage en direct de <code>findings.csv</code> (GitHub)</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge">dashboard</span>
+        <button id="toggleDark" class="btn-ghost text-sm">Mode sombre</button>
+      </div>
+    </div>
   </header>
 
-  <div class="controls">
-    <label class="pill">
-      CSV URL :
-      <input id="csvUrl" type="text" style="min-width: 380px; border: none; outline: none; margin-left: 8px;"
-             value="https://raw.githubusercontent.com/mathislef34/Udemy_Formation_Scanner/refs/heads/main/findings.csv" />
-    </label>
-    <button id="btnLoad">Charger</button>
-    <span id="info" class="muted"></span>
-  </div>
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <!-- Source / actions -->
+    <section class="card">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <label class="flex-1">
+          <span class="block text-sm mb-1 text-slate-600 dark:text-slate-300">CSV URL</span>
+          <input id="csvUrl" type="text" class="input" value="">
+        </label>
+        <div class="flex items-center gap-2">
+          <button id="btnLoad" class="btn-primary text-sm">Charger</button>
+          <button id="btnRefresh" class="btn text-sm">Rafraîchir</button>
+        </div>
+      </div>
+      <div class="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div>Source : <span id="info" class="underline decoration-dotted"></span></div>
+        <label class="inline-flex items-center gap-2">
+          <input id="autoRefresh" type="checkbox" class="checkbox">
+          <span>Auto-refresh toutes les 5 min</span>
+        </label>
+      </div>
+    </section>
 
-  <div class="controls">
-    <label>Filtrer par mot-clé :</label>
-    <select id="keywordFilter" class="pill">
-      <option value="">— Tous —</option>
-    </select>
-    <label class="pill">
-      De :
-      <input id="dateFrom" type="date" />
-    </label>
-    <label class="pill">
-      À :
-      <input id="dateTo" type="date" />
-    </label>
-    <button id="btnApply">Appliquer filtres</button>
-    <button id="btnReset">Réinitialiser</button>
-  </div>
+    <!-- Filtres -->
+    <section class="card">
+      <div class="grid md:grid-cols-5 gap-3">
+        <label class="md:col-span-1">
+          <span class="block text-sm mb-1">Mot-clé</span>
+          <select id="keywordFilter" class="input">
+            <option value="">— Tous —</option>
+          </select>
+        </label>
+        <label>
+          <span class="block text-sm mb-1">De</span>
+          <input id="dateFrom" type="date" class="input"/>
+        </label>
+        <label>
+          <span class="block text-sm mb-1">À</span>
+          <input id="dateTo" type="date" class="input"/>
+        </label>
+        <div class="md:col-span-2 flex items-end gap-2">
+          <button id="btnApply" class="btn-primary text-sm">Appliquer filtres</button>
+          <button id="btnReset" class="btn text-sm">Réinitialiser</button>
+        </div>
+      </div>
+    </section>
 
-  <div id="status" class="loading">En attente de chargement…</div>
-  <div id="table"></div>
+    <!-- Tableau -->
+    <section class="card">
+      <div id="status" class="text-sm text-slate-600 dark:text-slate-300">En attente de chargement…</div>
+      <div id="table" class="mt-3"></div>
+      <div id="stats" class="mt-3 text-xs text-slate-500 dark:text-slate-400"></div>
+    </section>
+  </main>
 
-  <footer>
-    <div id="stats" class="muted"></div>
+  <footer class="py-6">
+    <div class="max-w-6xl mx-auto px-4 text-xs text-slate-500 dark:text-slate-400">
+      © <span id="year"></span> – Généré côté client. Données : GitHub raw CSV.
+    </div>
   </footer>
-</div>
 
-<script>
-  const elTable = document.getElementById('table');
-  const elStatus = document.getElementById('status');
-  const elStats = document.getElementById('stats');
-  const elInfo = document.getElementById('info');
-  const elCsvUrl = document.getElementById('csvUrl');
-  const elKeyword = document.getElementById('keywordFilter');
-  const elDateFrom = document.getElementById('dateFrom');
-  const elDateTo = document.getElementById('dateTo');
-  const elBtnLoad = document.getElementById('btnLoad');
-  const elBtnApply = document.getElementById('btnApply');
-  const elBtnReset = document.getElementById('btnReset');
-
-  let rawRows = [];  // données complètes du CSV
-  let grid = null;   // instance Grid.js
-
-  function uniq(arr) { return Array.from(new Set(arr)); }
-
-  function parseKeywords(s) {
-    if (!s) return [];
-    return s.split('|').map(x => x.trim()).filter(Boolean);
-  }
-  function parseList(s) {
-    if (!s) return [];
-    return s.split(';').map(x => x.trim()).filter(Boolean);
-  }
-  function isInDateRange(iso, from, to) {
-    if (!iso) return true;
-    const d = new Date(iso);
-    if (from && d < new Date(from)) return false;
-    if (to && d > new Date(to + 'T23:59:59')) return false;
-    return true;
-  }
-
-  function toLink(href, text) {
-    const t = text || href;
-    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${t}</a>`;
-  }
-
-  function renderTable(rows) {
-    // Détruit l’instance précédente si elle existe (pour re-render après filtres)
-    if (grid) {
-      grid.updateConfig({ data: [] }).forceRender();
-      elTable.innerHTML = '';
-    }
-
-    grid = new gridjs.Grid({
-      columns: [
-        { id: 'date_utc', name: 'date_utc' },
-        { id: 'message_id', name: 'message_id' },
-        { id: 'url', name: 'url', formatter: (cell) => gridjs.html(toLink(cell, 'post')) },
-        { id: 'keywords', name: 'keywords', formatter: (cell) => {
-            const chips = parseKeywords(cell).map(k => `<span class="chip">${k}</span>`).join(' ');
-            return gridjs.html(`<div class="chips">${chips || ''}</div>`);
-          }},
-        { id: 'udemy_urls', name: 'udemy_urls', formatter: (cell) => {
-            const links = parseList(cell).map(u => toLink(u, 'udemy')).join(' · ');
-            return gridjs.html(links || '');
-          }},
-        { id: 'coupon_codes', name: 'coupon_codes', formatter: (cell) => {
-            const codes = parseList(cell).map(c => `<code>${c}</code>`).join(' · ');
-            return gridjs.html(codes || '');
-          }},
-        { id: 'snippet', name: 'snippet' }
-      ],
-      data: rows,
-      search: true,
-      sort: true,
-      pagination: { limit: 25 },
-      style: { table: { 'white-space': 'nowrap' } }
-    }).render(elTable);
-
-    elStats.textContent = `${rows.length} ligne(s) affichée(s).`;
-  }
-
-  function applyFilters() {
-    const kw = elKeyword.value;
-    const from = elDateFrom.value;
-    const to = elDateTo.value;
-    const filtered = rawRows.filter(r => {
-      const okDate = isInDateRange(r.date_utc, from, to);
-      if (!okDate) return false;
-      if (!kw) return true;
-      return parseKeywords(r.keywords).includes(kw);
-    });
-    renderTable(filtered);
-  }
-
-  function fillKeywordsFilter(rows) {
-    const all = rows.flatMap(r => parseKeywords(r.keywords));
-    const values = [''].concat(uniq(all).sort());
-    elKeyword.innerHTML = values.map(v => v
-      ? `<option value="${v}">${v}</option>` 
-      : `<option value="">— Tous —</option>`).join('');
-  }
-
-  async function loadCsv(url) {
-    elStatus.classList.remove('error');
-    elStatus.textContent = 'Chargement du CSV…';
-    try {
-      const resp = await fetch(url, { cache: 'no-store' });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const text = await resp.text();
-
-      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-      if (parsed.errors?.length) {
-        console.warn('CSV parse errors:', parsed.errors);
-      }
-      // Normalisation minimale des colonnes attendues
-      rawRows = parsed.data.map(row => ({
-        date_utc: row.date_utc || '',
-        message_id: row.message_id || '',
-        url: row.url || '',
-        keywords: row.keywords || '',
-        udemy_urls: row.udemy_urls || '',
-        coupon_codes: row.coupon_codes || '',
-        snippet: row.snippet || ''
-      }));
-
-      fillKeywordsFilter(rawRows);
-      renderTable(rawRows);
-
-      elStatus.textContent = 'OK';
-      elInfo.textContent = `Source: ${url}`;
-    } catch (e) {
-      console.error(e);
-      elStatus.textContent = `Erreur de chargement: ${e}`;
-      elStatus.classList.add('error');
-    }
-  }
-
-  elBtnLoad.addEventListener('click', () => loadCsv(elCsvUrl.value.trim()));
-  elBtnApply.addEventListener('click', applyFilters);
-  elBtnReset.addEventListener('click', () => {
-    elKeyword.value = '';
-    elDateFrom.value = '';
-    elDateTo.value = '';
-    renderTable(rawRows);
-  });
-
-  // Chargement initial (pense à remplacer l’URL par la tienne)
-  loadCsv(elCsvUrl.value.trim() + '?ts=' + Date.now());
-</script>
+  <!-- App -->
+  <script src="app.js" defer></script>
 </body>
 </html>
