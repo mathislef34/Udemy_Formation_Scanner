@@ -37,12 +37,25 @@ jobs:
         env:
           TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
         run: |
-          if [ -z "${TELEGRAM_SESSION_B64}" ]; then
-            echo "Missing TELEGRAM_SESSION_B64 secret" >&2
-            exit 1
-          fi
-          echo "$TELEGRAM_SESSION_B64" | base64 -d > session_udemy.session
+          python - <<'PY'
+          import os, sys, base64, binascii
+          b64 = os.environ.get("TELEGRAM_SESSION_B64", "")
+          if not b64:
+              print("Missing TELEGRAM_SESSION_B64 secret", file=sys.stderr)
+              sys.exit(1)
+          # Supprime tous les espaces/retours ligne, puis décode sans strict validation
+          cleaned = "".join(b64.split())
+          try:
+              data = base64.b64decode(cleaned, validate=False)
+          except binascii.Error as e:
+              print("Base64 decode error:", e, file=sys.stderr)
+              sys.exit(1)
+          with open("session_udemy.session", "wb") as f:
+              f.write(data)
+          print("session_udemy.session restored, size =", len(data), "bytes")
+          PY
           ls -l session_udemy.session
+
 
       - name: Run scanner
         env:
