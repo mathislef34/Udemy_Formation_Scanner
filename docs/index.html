@@ -40,7 +40,7 @@
     <label class="pill">
       CSV URL :
       <input id="csvUrl" type="text" style="min-width: 380px; border: none; outline: none; margin-left: 8px;"
-             value="https://raw.githubusercontent.com/OWNER/REPO/BRANCH/findings.csv" />
+             value="https://raw.githubusercontent.com/mathislef34/Udemy_Formation_Scanner/refs/heads/main/findings.csv" />
     </label>
     <button id="btnLoad">Charger</button>
     <span id="info" class="muted"></span>
@@ -212,7 +212,7 @@
   });
 
   // Chargement initial (pense à remplacer l’URL par la tienne)
-  // loadCsv(elCsvUrl.value.trim());
+  loadCsv(elCsvUrl.value.trim() + '?ts=' + Date.now());
 </script>
 </body>
 </html>
