@@ -74,17 +74,27 @@ jobs:
           print("consolidated.")
           PY
 
-      - name: Commit & push results
+      - name: Commit & push results (with rebase)
+        env:
+          BRANCH: ${{ github.ref_name }} # ex: main
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add findings.csv state.json || true
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: update scanner results [skip ci]"
-            git push
-          else
+
+          if git diff --cached --quiet; then
             echo "No changes to commit."
+            exit 0
           fi
+
+          git commit -m "chore: update scanner results [skip ci]"
+
+          # Récupère les derniers commits distants, rebase, puis push
+          git fetch origin $BRANCH
+          git pull --rebase origin $BRANCH
+          git push origin HEAD:$BRANCH
+
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
