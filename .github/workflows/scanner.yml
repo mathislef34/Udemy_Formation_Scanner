@@ -1,9 +1,8 @@
 name: Telegram Udemy Scanner
 
 on:
-  # Exécute toutes les 30 min (UTC) + déclenchement manuel
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/30 * * * *"  # toutes les 30 min (UTC)
   workflow_dispatch:
 
 permissions:
@@ -33,20 +32,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # ✅ Étape corrigée (sans heredoc YAML)
       - name: Restore Telethon session from secret
         env:
           TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
         run: |
-          python - <<'PY'
-import os, base64, sys
-b64 = os.environ.get("TELEGRAM_SESSION_B64")
-if not b64:
-    sys.exit("Missing TELEGRAM_SESSION_B64 secret")
-data = base64.b64decode(b64)
-with open("session_udemy.session", "wb") as f:
-    f.write(data)
-print("session_udemy.session restored")
-PY
+          if [ -z "${TELEGRAM_SESSION_B64}" ]; then
+            echo "Missing TELEGRAM_SESSION_B64 secret" >&2
+            exit 1
+          fi
+          echo "$TELEGRAM_SESSION_B64" | base64 -d > session_udemy.session
+          ls -l session_udemy.session
 
       - name: Run scanner
         env:
@@ -60,10 +56,10 @@ PY
       - name: Consolidate CSV (optional)
         run: |
           python - <<'PY'
-from scanner import consolidate_csv
-consolidate_csv()
-print("consolidated.")
-PY
+          from scanner import consolidate_csv
+          consolidate_csv()
+          print("consolidated.")
+          PY
 
       - name: Commit & push results
         run: |
@@ -84,4 +80,3 @@ PY
           path: |
             findings.csv
             state.json
-          # retention-days: 30
