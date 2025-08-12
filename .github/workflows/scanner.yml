@@ -2,7 +2,7 @@ name: Telegram Udemy Scanner
 
 on:
   schedule:
-    - cron: "*/30 * * * *"  # toutes les 30 min (UTC)
+    - cron: "*/5 * * * *"  # toutes les 30 min (UTC)
   workflow_dispatch:
 
 permissions:
