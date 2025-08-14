@@ -34,6 +34,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Restaure la session Telethon depuis un secret (Base64)
       - name: Restore Telethon session from secret
         env:
           TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
@@ -60,7 +61,7 @@ jobs:
           PY
           ls -l session_udemy.session
 
-      # 🔎 Préflight: check env + session file presence
+      # (Optionnel) Préflight
       - name: Preflight checks
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
@@ -87,7 +88,8 @@ jobs:
           consolidate_csv()
           print("consolidated.")
           PY
-          
+
+      # ⬇️ NOUVELLE ÉTAPE: copie le CSV dans /docs pour GitHub Pages
       - name: Copy CSV to docs for GitHub Pages
         run: |
           mkdir -p docs
@@ -100,7 +102,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # ⬇️ Ajoute aussi la copie dans /docs
+          # Ajoute aussi la copie dans /docs
           git add findings.csv state.json docs/findings.csv || true
 
           if git diff --cached --quiet; then
@@ -121,3 +123,4 @@ jobs:
           path: |
             findings.csv
             state.json
+            docs/findings.csv
