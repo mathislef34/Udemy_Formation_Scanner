@@ -34,7 +34,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Restaure la session Telethon depuis un secret (Base64)
       - name: Restore Telethon session from secret
         env:
           TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
@@ -53,9 +52,24 @@ jobs:
               sys.exit(1)
           with open("session_udemy.session", "wb") as f:
               f.write(data)
-          print("session_udemy.session restored, size =", len(data), "bytes")
+          size = len(data)
+          if size < 200:
+              print("Decoded session seems too small; may be invalid.", file=sys.stderr)
+              sys.exit(1)
+          print("session_udemy.session restored, size =", size, "bytes")
           PY
           ls -l session_udemy.session
+
+      # 🔎 Préflight: check env + session file presence
+      - name: Preflight checks
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: |
+          test -n "${TELEGRAM_API_ID}" || (echo "Missing TELEGRAM_API_ID" && exit 1)
+          test -n "${TELEGRAM_API_HASH}" || (echo "Missing TELEGRAM_API_HASH" && exit 1)
+          test -f "session_udemy.session" || (echo "Missing session_udemy.session" && exit 1)
+          test -s "session_udemy.session" || (echo "Empty session_udemy.session" && exit 1)
 
       - name: Run scanner
         env:
@@ -63,10 +77,6 @@ jobs:
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           TELEGRAM_SESSION_NAME: session_udemy
           CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
-          # Optionnels :
-          # STATE_FILE: state.json
-          # CSV_FILE: findings.csv
-          # FIRST_RUN_START_MESSAGE_ID: "231689"
         run: |
           python scanner.py --verbose
 
@@ -84,16 +94,12 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add findings.csv state.json || true
-
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
-
           git commit -m "chore: update scanner results [skip ci]"
-
           git fetch origin $BRANCH
           git pull --rebase origin $BRANCH
           git push origin HEAD:$BRANCH
