@@ -15,22 +15,23 @@ import pandas as pd
 from telethon import TelegramClient
 from telethon.tl.custom.message import Message
 
-# ================== CONFIG (valeurs par défaut) ==================
-API_ID = 26259054  # ton API ID en entier
-API_HASH = "1751af23dda86a00c49d1597dcbe23b3"  # ton API HASH
-SESSION  = "session_udemy"
+# ================================================================
+# Config par défaut (sans identifiants en dur)
+# ================================================================
+API_ID: int | None = None
+API_HASH: str | None = None
+SESSION: str | None = None
 
 CHANNEL_USERNAME = "Udemy_Free_Courses4"
-
-# Première exécution UNIQUEMENT (fallback si aucun state.json) :
 FIRST_RUN_START_MESSAGE_ID = 231689  # ex: https://t.me/Udemy_Free_Courses4/231689
 
 STATE_FILE = "state.json"
 CSV_FILE = "findings.csv"
-# ================================================================
 
-# ===== Overrides via variables d'environnement (si présentes) ===
-def _env_int(name: str, default: int) -> int:
+# ================================================================
+# Helpers ENV
+# ================================================================
+def _env_int(name: str, default: int | None) -> int | None:
     val = os.getenv(name, "").strip()
     if not val:
         return default
@@ -42,15 +43,16 @@ def _env_int(name: str, default: int) -> int:
 API_ID = _env_int("TELEGRAM_API_ID", API_ID)
 API_HASH = os.getenv("TELEGRAM_API_HASH", API_HASH)
 SESSION = os.getenv("TELEGRAM_SESSION_NAME", SESSION)
-CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", CHANNEL_USERNAME)
-STATE_FILE = os.getenv("STATE_FILE", STATE_FILE)
-CSV_FILE = os.getenv("CSV_FILE", CSV_FILE)
-FRSMI_ENV = os.getenv("FIRST_RUN_START_MESSAGE_ID", "").strip()
-if FRSMI_ENV.isdigit():
-    FIRST_RUN_START_MESSAGE_ID = int(FRSMI_ENV)
-# ================================================================
+CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", CHANNEL_USERNAME) or CHANNEL_USERNAME
+STATE_FILE = os.getenv("STATE_FILE", STATE_FILE) or STATE_FILE
+CSV_FILE = os.getenv("CSV_FILE", CSV_FILE) or CSV_FILE
+_fr = os.getenv("FIRST_RUN_START_MESSAGE_ID", "").strip()
+if _fr.isdigit():
+    FIRST_RUN_START_MESSAGE_ID = int(_fr)
 
-# ==================== Patterns / Regex ==========================
+# ================================================================
+# Patterns / Regex
+# ================================================================
 KEYWORD_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"\bAZ[-\s]?104\b", re.IGNORECASE), "AZ-104"),
     (re.compile(r"\bSC[-\s]?200\b", re.IGNORECASE), "SC-200"),
@@ -61,9 +63,10 @@ KEYWORD_PATTERNS: List[Tuple[re.Pattern, str]] = [
 ]
 
 UDEMY_URL_RE = re.compile(r"https?://(?:www\.)?udemy\.com/[^\s)>\]]+", re.IGNORECASE)
-# ================================================================
 
-# -------------------- State helpers -----------------------------
+# ================================================================
+# State helpers
+# ================================================================
 def load_state(channel: str) -> int:
     if not os.path.exists(STATE_FILE):
         return FIRST_RUN_START_MESSAGE_ID
@@ -87,9 +90,10 @@ def save_state(channel: str, last_message_id: int) -> None:
     with open(tmp_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp_path, STATE_FILE)
-# ---------------------------------------------------------------
 
-# -------------------- CSV helpers ------------------------------
+# ================================================================
+# CSV helpers
+# ================================================================
 TARGET_COLS = ["date_utc", "message_id", "url", "keywords", "udemy_urls", "coupon_codes", "snippet"]
 
 def ensure_csv_schema() -> None:
@@ -104,7 +108,6 @@ def ensure_csv_schema() -> None:
             csv.writer(f).writerow(TARGET_COLS)
         return
 
-    # Essayer de lire, sinon repartir à zéro
     try:
         df = pd.read_csv(CSV_FILE)
     except Exception:
@@ -174,9 +177,10 @@ def consolidate_csv() -> None:
             print(f"[INFO] CSV consolidé : {before} -> {after} ligne(s).")
     except Exception as e:
         print(f"[WARN] Consolidation CSV ignorée (erreur: {e}).")
-# ---------------------------------------------------------------
 
-# -------------------- Message / Parsing ------------------------
+# ================================================================
+# Message / Parsing
+# ================================================================
 def message_text(msg: Message) -> str:
     text = getattr(msg, "text", None)
     if not text:
@@ -207,22 +211,26 @@ def extract_udemy_links_and_coupons(text: str):
         except Exception:
             pass
     return sorted(urls), sorted(coupons)
-# ---------------------------------------------------------------
 
-# -------------------- Core run --------------------------------
+# ================================================================
+# Core
+# ================================================================
 async def run(
     from_id: int | None,
     reset_state: bool,
     dry_run: bool,
     verbose: bool
 ) -> None:
-    if not API_ID or not API_HASH:
-        raise RuntimeError("⚠️ Configure TELEGRAM_API_ID et TELEGRAM_API_HASH (env ou script).")
+    # Validation identifiants
+    if not API_ID or not API_HASH or not SESSION:
+        raise RuntimeError(
+            "⚠️ TELEGRAM_API_ID, TELEGRAM_API_HASH et TELEGRAM_SESSION_NAME doivent être définis via l'environnement."
+        )
 
     client = TelegramClient(SESSION, API_ID, API_HASH)
     await client.start()
 
-    # Point de départ : --from-id > --reset-state > state.json > FIRST_RUN_START_MESSAGE_ID
+    # Point de départ
     if from_id is not None:
         start_id = from_id
         if verbose:
@@ -298,11 +306,13 @@ async def run(
     if verbose:
         print(f"[STATS] Scannés: {count_scanned}, Matches: {count_matched}")
 
-# Petit wrapper pratique si on veut appeler depuis un autre module
+# Wrapper pratique
 def run_scan_cli(from_id=None, reset_state=False, dry_run=False, verbose=False):
     asyncio.run(run(from_id=from_id, reset_state=reset_state, dry_run=dry_run, verbose=verbose))
 
-# -------------------- CLI -------------------------------------
+# ================================================================
+# CLI
+# ================================================================
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Scanner Telegram pour coupons Udemy (certifs).")
     p.add_argument("--from-id", type=int, default=None,
