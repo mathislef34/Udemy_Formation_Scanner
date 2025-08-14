@@ -87,6 +87,11 @@ jobs:
           consolidate_csv()
           print("consolidated.")
           PY
+          
+      - name: Copy CSV to docs for GitHub Pages
+        run: |
+          mkdir -p docs
+          cp findings.csv docs/findings.csv
 
       - name: Commit & push results (with rebase)
         env:
