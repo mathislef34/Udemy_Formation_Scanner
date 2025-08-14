@@ -34,7 +34,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ✅ Étape corrigée (sans heredoc YAML)
+      # Restaure la session Telethon depuis un secret (Base64)
       - name: Restore Telethon session from secret
         env:
           TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
@@ -45,7 +45,6 @@ jobs:
           if not b64:
               print("Missing TELEGRAM_SESSION_B64 secret", file=sys.stderr)
               sys.exit(1)
-          # Supprime tous les espaces/retours ligne, puis décode sans strict validation
           cleaned = "".join(b64.split())
           try:
               data = base64.b64decode(cleaned, validate=False)
@@ -58,13 +57,16 @@ jobs:
           PY
           ls -l session_udemy.session
 
-
       - name: Run scanner
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           TELEGRAM_SESSION_NAME: session_udemy
           CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
+          # Optionnels :
+          # STATE_FILE: state.json
+          # CSV_FILE: findings.csv
+          # FIRST_RUN_START_MESSAGE_ID: "231689"
         run: |
           python scanner.py --verbose
 
@@ -92,11 +94,9 @@ jobs:
 
           git commit -m "chore: update scanner results [skip ci]"
 
-          # Récupère les derniers commits distants, rebase, puis push
           git fetch origin $BRANCH
           git pull --rebase origin $BRANCH
           git push origin HEAD:$BRANCH
-
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
