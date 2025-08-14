@@ -25,6 +25,7 @@ const toLink = (href, text) =>
 // ------- Rendu -------
 let grid = null;
 function renderTable(rows) {
+  if (!elTable) return;
   if (grid) { grid.updateConfig({ data: [] }).forceRender(); elTable.innerHTML = ''; }
   if (!rows.length) {
     elTable.innerHTML = `<div class="text-sm text-slate-500 dark:text-slate-400 p-6 text-center">Aucune donnée à afficher.</div>`;
@@ -48,11 +49,11 @@ function renderTable(rows) {
   }).render(elTable);
 }
 
-// ------- Chargement CSV -------
-// IMPORTANT: le site est servi depuis /docs → on lit le CSV dans /docs
-const CSV_URL = 'findings.csv';
+// ------- Chargement CSV (depuis /docs) -------
+const CSV_URL = 'findings.csv'; // car index.html & app.js sont dans /docs
 
 async function loadCsv() {
+  if (!elTable) return;
   elTable.innerHTML = `<div class="text-sm text-slate-500 dark:text-slate-400 p-6 text-center">Chargement…</div>`;
   try {
     const resp = await fetch(CSV_URL + '?ts=' + Date.now(), { cache:'no-store' });
