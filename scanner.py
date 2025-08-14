@@ -23,7 +23,7 @@ API_HASH: str | None = None
 SESSION: str | None = None
 
 CHANNEL_USERNAME = "Udemy_Free_Courses4"
-FIRST_RUN_START_MESSAGE_ID = 231689  # ex: https://t.me/Udemy_Free_Courses4/231689
+FIRST_RUN_START_MESSAGE_ID = 231689
 
 STATE_FILE = "state.json"
 CSV_FILE = "findings.csv"
@@ -97,12 +97,6 @@ def save_state(channel: str, last_message_id: int) -> None:
 TARGET_COLS = ["date_utc", "message_id", "url", "keywords", "udemy_urls", "coupon_codes", "snippet"]
 
 def ensure_csv_schema() -> None:
-    """
-    Vérifie/normalise le schéma du CSV :
-    - si le fichier n'existe pas : crée l’en-tête v2
-    - si 'keyword' (v1) existe et 'keywords' n'existe pas : migre vers v2
-    - ajoute les colonnes manquantes (udemy_urls, coupon_codes, etc.) si besoin
-    """
     if not os.path.exists(CSV_FILE):
         with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(TARGET_COLS)
@@ -117,23 +111,19 @@ def ensure_csv_schema() -> None:
 
     cols = set(df.columns)
 
-    # Migration v1 -> v2 : 'keyword' -> 'keywords'
     if "keyword" in cols and "keywords" not in cols:
         df["keywords"] = df["keyword"].astype(str)
         df.drop(columns=["keyword"], inplace=True)
         cols = set(df.columns)
 
-    # Colonnes manquantes
     for col in TARGET_COLS:
         if col not in cols:
             df[col] = "" if col != "message_id" else pd.NA
 
-    # Réordonner / filtrer
     df = df[TARGET_COLS]
     df.to_csv(CSV_FILE, index=False, encoding="utf-8")
 
 def consolidate_csv() -> None:
-    """Fusionne/déduplique par message_id dans findings.csv (schéma v2)."""
     if not os.path.exists(CSV_FILE):
         return
     try:
@@ -141,7 +131,6 @@ def consolidate_csv() -> None:
         if df.empty:
             return
 
-        # S’assurer des colonnes
         for c in TARGET_COLS:
             if c not in df.columns:
                 df[c] = ""
@@ -227,8 +216,38 @@ async def run(
             "⚠️ TELEGRAM_API_ID, TELEGRAM_API_HASH et TELEGRAM_SESSION_NAME doivent être définis via l'environnement."
         )
 
-    client = TelegramClient(SESSION, API_ID, API_HASH)
-    await client.start()
+    # Vérification du fichier de session (évite start() interactif)
+    session_path = f"{SESSION}.session" if not SESSION.endswith(".session") else SESSION
+    if SESSION.endswith(".session"):
+        # Telethon s'attend à un 'basename' sans extension ; on normalise
+        SESSION_BASENAME = SESSION[:-8]
+    else:
+        SESSION_BASENAME = SESSION
+
+    # Alerte si le fichier n'existe pas / est vide
+    if not os.path.exists(session_path):
+        raise RuntimeError(
+            f"⚠️ Fichier de session introuvable: '{session_path}'. "
+            "Assure-toi d'avoir restauré le .session depuis TELEGRAM_SESSION_B64 "
+            f"et que TELEGRAM_SESSION_NAME='{SESSION_BASENAME}'."
+        )
+    if os.path.getsize(session_path) < 200:
+        raise RuntimeError(
+            f"⚠️ Le fichier de session '{session_path}' semble invalide (taille trop petite). "
+            "Recrée la session localement et réimporte-la en Base64."
+        )
+
+    client = TelegramClient(SESSION_BASENAME, API_ID, API_HASH)
+
+    # ⚠️ Ne pas utiliser start() ici (pour éviter l'invite interactive).
+    await client.connect()
+    if not await client.is_user_authorized():
+        raise RuntimeError(
+            "⚠️ La session Telethon n'est pas autorisée (is_user_authorized() == False).\n"
+            "- Vérifie que le .session provient d'un compte déjà connecté.\n"
+            "- Utilise le **même** TELEGRAM_API_ID / TELEGRAM_API_HASH que lors de la création de la session.\n"
+            "- Nom de session attendu: TELEGRAM_SESSION_NAME='session_udemy' → fichier 'session_udemy.session'."
+        )
 
     # Point de départ
     if from_id is not None:
@@ -244,7 +263,6 @@ async def run(
         if verbose:
             print(f"[INFO] Start from state.json = {start_id}")
 
-    # Préparer CSV (création/migration schéma)
     ensure_csv_schema()
 
     max_seen_id = start_id
@@ -281,8 +299,7 @@ async def run(
 
         if not dry_run:
             with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow([
+                csv.writer(f).writerow([
                     msg.date.astimezone(timezone.utc).isoformat(),
                     msg.id,
                     tme_url,
@@ -306,7 +323,6 @@ async def run(
     if verbose:
         print(f"[STATS] Scannés: {count_scanned}, Matches: {count_matched}")
 
-# Wrapper pratique
 def run_scan_cli(from_id=None, reset_state=False, dry_run=False, verbose=False):
     asyncio.run(run(from_id=from_id, reset_state=reset_state, dry_run=dry_run, verbose=verbose))
 
@@ -315,14 +331,10 @@ def run_scan_cli(from_id=None, reset_state=False, dry_run=False, verbose=False):
 # ================================================================
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Scanner Telegram pour coupons Udemy (certifs).")
-    p.add_argument("--from-id", type=int, default=None,
-                   help="Force un ID de départ (ignore l'état sauvegardé).")
-    p.add_argument("--reset-state", action="store_true",
-                   help="Ignore state.json et repart de FIRST_RUN_START_MESSAGE_ID.")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Lecture seule : n'écrit ni CSV ni state.json.")
-    p.add_argument("--verbose", action="store_true",
-                   help="Affiche plus de logs.")
+    p.add_argument("--from-id", type=int, default=None, help="Force un ID de départ (ignore l'état sauvegardé).")
+    p.add_argument("--reset-state", action="store_true", help="Ignore state.json et repart de FIRST_RUN_START_MESSAGE_ID.")
+    p.add_argument("--dry-run", action="store_true", help="Lecture seule : n'écrit ni CSV ni state.json.")
+    p.add_argument("--verbose", action="store_true", help="Affiche plus de logs.")
     return p.parse_args()
 
 if __name__ == "__main__":
