@@ -50,7 +50,7 @@ function renderTable(rows) {
 
 // ------- Chargement CSV -------
 // NOTE: conserve le chemin relatif que tu utilisais déjà
-const CSV_URL = "../findings.csv";
+const CSV_URL = "https://raw.githubusercontent.com/mathislef34/Udemy_Formation_Scanner/main/findings.csv";
 
 async function loadCsv(url) {
   try {
