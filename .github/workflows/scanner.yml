@@ -99,12 +99,17 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # ⬇️ Ajoute aussi la copie dans /docs
           git add findings.csv state.json docs/findings.csv || true
+
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
+
           git commit -m "chore: update scanner results [skip ci]"
+
           git fetch origin $BRANCH
           git pull --rebase origin $BRANCH
           git push origin HEAD:$BRANCH
