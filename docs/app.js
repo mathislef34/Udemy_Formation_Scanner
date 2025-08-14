@@ -1,4 +1,4 @@
-// ------- Thème sombre -------
+// ================== Thème sombre ==================
 const toggleDark = document.getElementById('toggleDark');
 if (toggleDark && localStorage.getItem('theme') === 'dark') {
   document.documentElement.classList.add('dark');
@@ -6,23 +6,40 @@ if (toggleDark && localStorage.getItem('theme') === 'dark') {
 if (toggleDark) {
   toggleDark.addEventListener('click', () => {
     document.documentElement.classList.toggle('dark');
-    localStorage.setItem(
-      'theme',
-      document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-    );
+    localStorage.setItem('theme',
+      document.documentElement.classList.contains('dark') ? 'dark' : 'light');
   });
 }
 const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
 
-// ------- Cible du tableau -------
+// ================== Cibles DOM ==================
 const elTable = document.getElementById('table');
 
-// ------- Helpers -------
+// Bandeau de statut pour voir l’URL testée/réussie
+const statusBar = document.createElement('div');
+statusBar.className = 'text-xs text-slate-500 dark:text-slate-400 mb-2';
+statusBar.textContent = 'Préparation du chargement…';
+if (elTable && elTable.parentNode) elTable.parentNode.insertBefore(statusBar, elTable);
+
+// ================== Helpers ==================
 const parseKeywords = (s) => (s || '').split('|').map(x => x.trim()).filter(Boolean);
 const toLink = (href, text) =>
   `<a class="text-indigo-600 dark:text-indigo-400 hover:underline" href="${href}" target="_blank" rel="noopener">${text || href}</a>`;
 
-// ------- Rendu -------
+// URLs candidates (local /docs d’abord, puis RAW & jsDelivr)
+const USER = 'mathislef34';
+const REPO = 'Udemy_Formation_Scanner';
+const CANDIDATES = [
+  'findings.csv',                    // /docs/findings.csv (recommandé)
+  './findings.csv',
+  '../findings.csv',                 // parent (souvent non servi sur Pages)
+  `https://raw.githubusercontent.com/${USER}/${REPO}/main/findings.csv`,
+  `https://raw.githubusercontent.com/${USER}/${REPO}/gh-pages/findings.csv`,
+  `https://cdn.jsdelivr.net/gh/${USER}/${REPO}@main/findings.csv`,
+  `https://cdn.jsdelivr.net/gh/${USER}/${REPO}@gh-pages/findings.csv`,
+];
+
+// ================== Rendu ==================
 let grid = null;
 function renderTable(rows) {
   if (!elTable) return;
@@ -35,7 +52,7 @@ function renderTable(rows) {
     columns: [
       { id:'date_utc', name:'date_utc' },
       { id:'message_id', name:'message_id' },
-      { id:'url', name:'url', formatter:(cell)=>gridjs.html(toLink(cell,'post')) },
+      { id:'url', name:'url', formatter:(cell)=>gridjs.html(toLink(cell, 'post')) },
       { id:'keywords', name:'keywords', formatter:(cell)=>{
           const chips = parseKeywords(cell).map(k=>`<span class="chip">${k}</span>`).join(' ');
           return gridjs.html(`<div class="flex flex-wrap items-center gap-1">${chips||''}</div>`);
@@ -49,17 +66,40 @@ function renderTable(rows) {
   }).render(elTable);
 }
 
-// ------- Chargement CSV (depuis /docs) -------
-const CSV_URL = 'findings.csv'; // car index.html & app.js sont dans /docs
+// ================== Chargement CSV (multi-fallback) ==================
+async function fetchText(url) {
+  const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'ts=' + Date.now(), { cache:'no-store' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return await resp.text();
+}
+
+async function fetchWithFallbacks(urls) {
+  let lastErr = null;
+  for (const url of urls) {
+    try {
+      statusBar.textContent = `Essai : ${url}`;
+      const text = await fetchText(url);
+      statusBar.textContent = `Chargé depuis : ${url}`;
+      return text;
+    } catch (e) {
+      console.warn('[CSV] Échec:', url, e.message);
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('Aucune URL n’a fonctionné');
+}
 
 async function loadCsv() {
-  if (!elTable) return;
+  if (!elTable) {
+    console.error('Élément #table introuvable');
+    return;
+  }
   elTable.innerHTML = `<div class="text-sm text-slate-500 dark:text-slate-400 p-6 text-center">Chargement…</div>`;
   try {
-    const resp = await fetch(CSV_URL + '?ts=' + Date.now(), { cache:'no-store' });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const text = await resp.text();
+    if (!window.Papa) throw new Error('Papa Parse non chargé');
+    if (!window.gridjs) throw new Error('Grid.js non chargé');
 
+    const text = await fetchWithFallbacks(CANDIDATES);
     const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
     const rows = (parsed.data || []).map(row => ({
       date_utc: row.date_utc || '',
@@ -72,9 +112,9 @@ async function loadCsv() {
     renderTable(rows);
   } catch (e) {
     console.error(e);
+    statusBar.textContent = 'Erreur lors du chargement.';
     elTable.innerHTML = `<div class="text-sm text-rose-600 p-6">${e.message}</div>`;
   }
 }
 
-// ------- Démarrage -------
 loadCsv();
