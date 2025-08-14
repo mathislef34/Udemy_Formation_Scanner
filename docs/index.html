@@ -5,17 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Udemy Scanner – Résultats</title>
 
-  <!-- Tailwind (CDN, pratique pour le layout moderne) -->
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Grid.js (tableau tri/recherche/pagination) -->
+  <!-- Grid.js -->
   <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
   <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
 
-  <!-- Papa Parse (CSV -> JSON) -->
+  <!-- Papa Parse -->
   <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 
-  <!-- Styles perso -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="h-full bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors">
@@ -24,76 +23,25 @@
     <div class="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">Udemy Scanner</h1>
-        <p class="text-white/80 text-sm">Affichage en direct de <code>findings.csv</code> (GitHub)</p>
+        <p class="text-white/80 text-sm">Résultats des détections</p>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="badge">dashboard</span>
-        <button id="toggleDark" class="btn-ghost text-sm">Mode sombre</button>
-      </div>
+      <button id="toggleDark" class="btn-ghost text-sm">Mode sombre</button>
     </div>
   </header>
 
   <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
-    <!-- Source / actions -->
+    <!-- Tableau uniquement -->
     <section class="card">
-      <div class="flex flex-col md:flex-row md:items-center gap-3">
-        <label class="flex-1">
-          <span class="block text-sm mb-1 text-slate-600 dark:text-slate-300">CSV URL</span>
-          <input id="csvUrl" type="text" class="input" value="">
-        </label>
-        <div class="flex items-center gap-2">
-          <button id="btnLoad" class="btn-primary text-sm">Charger</button>
-          <button id="btnRefresh" class="btn text-sm">Rafraîchir</button>
-        </div>
-      </div>
-      <div class="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-        <div>Source : <span id="info" class="underline decoration-dotted"></span></div>
-        <label class="inline-flex items-center gap-2">
-          <input id="autoRefresh" type="checkbox" class="checkbox">
-          <span>Auto-refresh toutes les 5 min</span>
-        </label>
-      </div>
-    </section>
-
-    <!-- Filtres -->
-    <section class="card">
-      <div class="grid md:grid-cols-5 gap-3">
-        <label class="md:col-span-1">
-          <span class="block text-sm mb-1">Mot-clé</span>
-          <select id="keywordFilter" class="input">
-            <option value="">— Tous —</option>
-          </select>
-        </label>
-        <label>
-          <span class="block text-sm mb-1">De</span>
-          <input id="dateFrom" type="date" class="input"/>
-        </label>
-        <label>
-          <span class="block text-sm mb-1">À</span>
-          <input id="dateTo" type="date" class="input"/>
-        </label>
-        <div class="md:col-span-2 flex items-end gap-2">
-          <button id="btnApply" class="btn-primary text-sm">Appliquer filtres</button>
-          <button id="btnReset" class="btn text-sm">Réinitialiser</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Tableau -->
-    <section class="card">
-      <div id="status" class="text-sm text-slate-600 dark:text-slate-300">En attente de chargement…</div>
-      <div id="table" class="mt-3"></div>
-      <div id="stats" class="mt-3 text-xs text-slate-500 dark:text-slate-400"></div>
+      <div id="table"></div>
     </section>
   </main>
 
   <footer class="py-6">
     <div class="max-w-6xl mx-auto px-4 text-xs text-slate-500 dark:text-slate-400">
-      © <span id="year"></span> – Généré côté client. Données : GitHub raw CSV.
+      © <span id="year"></span> – Données: CSV généré par le scanner.
     </div>
   </footer>
 
-  <!-- App -->
   <script src="app.js" defer></script>
 </body>
 </html>
