@@ -1,16 +1,10 @@
-// ================== Thème sombre ==================
-const toggleDark = document.getElementById('toggleDark');
-if (toggleDark && localStorage.getItem('theme') === 'dark') {
-  document.documentElement.classList.add('dark');
-}
-if (toggleDark) {
-  toggleDark.addEventListener('click', () => {
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme',
-      document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-  });
-}
-const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+
+name: Telegram Udemy Scanner
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # toutes les 30 min (UTC)
+  workflow_dispatch:
 
 // ================== Cibles DOM ==================
 const elTable = document.getElementById('table');
