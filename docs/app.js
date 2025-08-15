@@ -1,11 +1,4 @@
 
-name: Telegram Udemy Scanner
-
-on:
-  schedule:
-    - cron: "*/30 * * * *"   # toutes les 30 min (UTC)
-  workflow_dispatch:
-
 // ================== Cibles DOM ==================
 const elTable = document.getElementById('table');
 
@@ -118,3 +111,5 @@ async function loadCsv() {
 }
 
 loadCsv();
+// recharge les données toutes les 30 minutes
+setInterval(loadCsv, 30 * 60 * 1000);
