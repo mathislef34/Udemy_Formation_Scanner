@@ -43,11 +43,15 @@ const CANDIDATES = [
 let grid = null;
 function renderTable(rows) {
   if (!elTable) return;
-  if (grid) { grid.updateConfig({ data: [] }).forceRender(); elTable.innerHTML = ''; }
+
+  // ⚠️ IMPORTANT : vide toujours le conteneur avant Grid.js
+  elTable.innerHTML = '';
+
   if (!rows.length) {
     elTable.innerHTML = `<div class="text-sm text-slate-500 dark:text-slate-400 p-6 text-center">Aucune donnée à afficher.</div>`;
     return;
   }
+
   grid = new gridjs.Grid({
     columns: [
       { id:'date_utc', name:'date_utc' },
@@ -94,7 +98,9 @@ async function loadCsv() {
     console.error('Élément #table introuvable');
     return;
   }
+  // On met un message de chargement provisoire…
   elTable.innerHTML = `<div class="text-sm text-slate-500 dark:text-slate-400 p-6 text-center">Chargement…</div>`;
+
   try {
     if (!window.Papa) throw new Error('Papa Parse non chargé');
     if (!window.gridjs) throw new Error('Grid.js non chargé');
