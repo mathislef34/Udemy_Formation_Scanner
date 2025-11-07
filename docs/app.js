@@ -1,4 +1,3 @@
-
 // ================== Cibles DOM ==================
 const elTable = document.getElementById('table');
 
@@ -12,6 +11,10 @@ if (elTable && elTable.parentNode) elTable.parentNode.insertBefore(statusBar, el
 const parseKeywords = (s) => (s || '').split('|').map(x => x.trim()).filter(Boolean);
 const toLink = (href, text) =>
   `<a class="text-indigo-600 dark:text-indigo-400 hover:underline" href="${href}" target="_blank" rel="noopener">${text || href}</a>`;
+const getDateValue = (value) => {
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? -Infinity : timestamp;
+};
 
 // URLs candidates (local /docs d’abord, puis RAW & jsDelivr)
 const USER = 'mathislef34';
@@ -42,6 +45,14 @@ function renderTable(rows) {
   grid = new gridjs.Grid({
     columns: [
       { id:'date_utc', name:'date_utc' },
+      {
+        id:'date_utc',
+        name:'date_utc',
+        sort: {
+          enabled: true,
+          compare: (a, b) => getDateValue(a) - getDateValue(b)
+        }
+      },
       { id:'message_id', name:'message_id' },
       { id:'url', name:'url', formatter:(cell)=>gridjs.html(toLink(cell, 'post')) },
       { id:'keywords', name:'keywords', formatter:(cell)=>{
@@ -67,16 +78,7 @@ async function fetchText(url) {
 async function fetchWithFallbacks(urls) {
   let lastErr = null;
   for (const url of urls) {
-    try {
-      statusBar.textContent = `Essai : ${url}`;
-      const text = await fetchText(url);
-      statusBar.textContent = `Chargé depuis : ${url}`;
-      return text;
-    } catch (e) {
-      console.warn('[CSV] Échec:', url, e.message);
-      lastErr = e;
-    }
-  }
+@@ -80,36 +91,38 @@ async function fetchWithFallbacks(urls) {
   throw lastErr || new Error('Aucune URL n’a fonctionné');
 }
 
@@ -101,6 +103,8 @@ async function loadCsv() {
       keywords: row.keywords || '',
       snippet: row.snippet || ''
     }));
+
+    rows.sort((a, b) => getDateValue(b.date_utc) - getDateValue(a.date_utc));
 
     renderTable(rows);
   } catch (e) {
